@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>8-Week Study Master Plan</title>
+<meta name="description" content="Offline installable 8-week study schedule, timer and progress tracker.">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F16">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Study Schedule">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<style>
+/* ============ LOCAL FONT STACKS (no network needed) ============ */
+/* ============ TOKENS ============ */
+:root{
+  --ink-950:#0B0F16; --ink-900:#111826; --ink-850:#161F30; --ink-800:#1C2740;
+  --paper-50:#F6F1E4; --paper-100:#ECE4CF; --paper-200:#DED2AF;
+  --gold:#CD9B3F; --gold-soft:#E8C179; --teal:#4F8C82; --teal-soft:#7FB3AA;
+  --rose:#C1614F;
+  --rule-dark: rgba(232,227,213,0.14); --rule-light: rgba(34,38,46,0.14);
+  --radius: 14px;
+  --serif: Georgia, 'Times New Roman', 'Source Serif Pro', serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, 'Courier New', monospace;
+}
+html[data-theme="dark"]{
+  --bg:var(--ink-950); --bg-raised:var(--ink-900); --bg-card:var(--ink-850);
+  --text:#EDE7D6; --text-dim:#A9A08A; --rule:var(--rule-dark);
+  --accent:var(--gold-soft); --accent-strong:var(--gold);
+  color-scheme: dark;
+}
+html[data-theme="light"]{
+  --bg:var(--paper-50); --bg-raised:#FFFDF8; --bg-card:var(--paper-100);
+  --text:#242019; --text-dim:#6B6252; --rule:var(--rule-light);
+  --accent:#9C6E22; --accent-strong:var(--gold);
+  color-scheme: light;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top: calc(96px + env(safe-area-inset-top,0px));}
+body{
+  margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  transition:background .3s ease,color .3s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+h1,h2,h3{font-family:var(--serif); font-weight:600; margin:0;}
+p{margin:0;}
+button{font-family:var(--sans); cursor:pointer;}
+::selection{background:var(--accent-strong); color:var(--ink-950);}
+
+/* ============ LAYOUT SHELL ============ */
+.wrap{max-width:880px; margin:0 auto; padding:0 20px 120px;}
+
+header.hero{
+  padding:calc(28px + env(safe-area-inset-top,0px)) 20px 26px;
+  background:
+    radial-gradient(1200px 400px at 15% -10%, rgba(205,155,63,.14), transparent 60%),
+    var(--bg-raised);
+  border-bottom:1px solid var(--rule);
+}
+.hero-inner{max-width:880px; margin:0 auto;}
+.eyebrow-row{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px;}
+.mark{display:flex; align-items:center; gap:9px; font-family:var(--mono); font-size:12.5px; color:var(--text-dim); letter-spacing:.02em;}
+.mark .dot{width:7px; height:7px; border-radius:50%; background:var(--accent-strong); box-shadow:0 0 0 3px rgba(205,155,63,.18);}
+.theme-btn{
+  background:transparent; border:1px solid var(--rule); color:var(--text);
+  padding:8px 12px; border-radius:20px; font-size:13px; display:flex; align-items:center; gap:6px;
+}
+h1.title{font-size:clamp(28px,6vw,42px); line-height:1.08; letter-spacing:-.01em; max-width:14ch;}
+.motto{font-family:var(--serif); font-style:italic; color:var(--text-dim); font-size:16px; margin-top:10px; max-width:42ch;}
+
+.stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--rule); border:1px solid var(--rule); border-radius:var(--radius); overflow:hidden; margin-top:22px;}
+.stat{background:var(--bg-raised); padding:14px 12px;}
+.stat .num{font-family:var(--serif); font-size:26px; font-weight:600;}
+.stat .lbl{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+@media (max-width:560px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+
+.bar-track{height:9px; border-radius:6px; background:var(--rule); overflow:hidden; margin-top:16px;}
+.bar-fill{height:100%; border-radius:6px; background:linear-gradient(90deg,var(--teal),var(--gold-soft)); transition:width .5s cubic-bezier(.4,0,.2,1);}
+.bar-caption{display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); margin-top:6px; font-family:var(--mono);}
+
+.motivate-strip{margin-top:16px; font-size:13px; color:var(--accent); font-style:italic; font-family:var(--serif); min-height:18px;}
+
+/* ============ NAV ============ */
+nav.weeknav{
+  position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:1px solid var(--rule);
+  padding-top:env(safe-area-inset-top,0px);
+}
+.weeknav-inner{max-width:880px; margin:0 auto; display:flex; align-items:center; gap:8px; padding:10px 20px; overflow-x:auto; scrollbar-width:none;}
+.weeknav-inner::-webkit-scrollbar{display:none;}
+.wk-pill{
+  flex:0 0 auto; padding:9px 15px; border-radius:20px; border:1px solid var(--rule); background:var(--bg-raised);
+  color:var(--text-dim); font-size:13.5px; font-weight:600; white-space:nowrap; position:relative; min-height:38px;
+}
+.wk-pill .ring{position:absolute; inset:0; border-radius:20px; pointer-events:none;}
+.wk-pill.active{color:var(--ink-950); background:var(--accent-strong); border-color:var(--accent-strong);}
+.wk-pill .pct{opacity:.75; font-family:var(--mono); font-size:11px; margin-left:5px;}
+.nav-arrows{display:flex; gap:6px; flex:0 0 auto;}
+.arrow-btn{border:1px solid var(--rule); background:var(--bg-raised); color:var(--text); width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px;}
+.arrow-btn:disabled{opacity:.3;}
+.viewall-btn{border:1px solid var(--rule); background:transparent; color:var(--text-dim); padding:9px 14px; border-radius:20px; font-size:13px; flex:0 0 auto;}
+.viewall-btn.active{color:var(--accent); border-color:var(--accent);}
+
+/* ============ WEEK CONTENT ============ */
+main{padding-top:22px;}
+.week-block{margin-bottom:34px;}
+.week-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:12px;}
+.week-head h2{font-size:22px;}
+.week-head .wk-pct{font-family:var(--mono); font-size:13px; color:var(--text-dim);}
+
+.phase-banner{
+  border-left:3px solid var(--teal); background:var(--bg-card); border-radius:0 var(--radius) var(--radius) 0;
+  padding:14px 16px; margin-bottom:16px; font-size:13.5px; line-height:1.55; color:var(--text-dim);
+}
+.phase-banner b{color:var(--text); font-family:var(--serif); font-size:14.5px;}
+
+.day-card{border:1px solid var(--rule); border-radius:var(--radius); background:var(--bg-raised); margin-bottom:12px; overflow:hidden;}
+.day-header{display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--rule);}
+.day-header h3{font-size:15.5px; letter-spacing:.02em;}
+.day-header .day-pct{font-family:var(--mono); font-size:12px; color:var(--text-dim);}
+.day-header.done{background:linear-gradient(90deg, rgba(79,140,130,.10), transparent);}
+.tasklist{padding:6px 8px;}
+.task{
+  display:flex; align-items:flex-start; gap:11px; padding:10px 8px; border-radius:10px;
+  transition:background .15s ease;
+}
+.task:hover{background:var(--bg-card);}
+.task .chk{
+  flex:0 0 auto; width:24px; height:24px; margin-top:1px; border-radius:7px; border:1.5px solid var(--rule);
+  background:transparent; display:flex; align-items:center; justify-content:center; color:var(--ink-950);
+  font-size:14px; font-weight:700;
+}
+.task .chk.checked{background:var(--teal); border-color:var(--teal); color:#fff;}
+.task .body{flex:1; min-width:0;}
+.task .tag{font-size:10.5px; font-family:var(--mono); color:var(--text-dim); letter-spacing:.04em; text-transform:uppercase;}
+.task .label{font-size:14.5px; margin-top:1px; line-height:1.4;}
+.task.done .label{color:var(--text-dim); text-decoration:line-through; text-decoration-color:var(--rule); text-decoration-thickness:1.5px;}
+.task .dur{font-size:11.5px; color:var(--text-dim); font-family:var(--mono); flex:0 0 auto; margin-top:2px;}
+
+/* ============ SUMMARY / ACHIEVEMENTS ============ */
+.section-title{font-size:18px; margin:36px 0 14px;}
+.summary-grid{display:flex; flex-direction:column; gap:8px;}
+.summary-row{display:grid; grid-template-columns:70px 1fr 42px; align-items:center; gap:12px; font-size:13px;}
+.summary-row .wk-name{font-family:var(--mono); color:var(--text-dim);}
+.summary-row .pct{text-align:right; font-family:var(--mono); color:var(--text-dim);}
+
+.strip{display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none;}
+.strip::-webkit-scrollbar{display:none;}
+.badge{
+  flex:0 0 auto; min-width:150px; border:1px solid var(--rule); border-radius:var(--radius); padding:14px;
+  background:var(--bg-raised); opacity:.35; filter:grayscale(1);
+}
+.badge.unlocked{opacity:1; filter:none; border-color:var(--accent-strong);}
+.badge .ico{font-size:22px;}
+.badge .name{font-size:12.5px; font-weight:600; margin-top:6px;}
+.badge .desc{font-size:11px; color:var(--text-dim); margin-top:2px;}
+
+.streak-box{display:flex; align-items:center; gap:14px; border:1px solid var(--rule); border-radius:var(--radius); padding:16px; background:var(--bg-raised); margin-bottom:8px;}
+.streak-box .flame{font-size:28px;}
+.streak-box .num{font-family:var(--serif); font-size:24px; font-weight:600;}
+.streak-box .lbl{font-size:12px; color:var(--text-dim);}
+
+/* ============ STUDY TIMER ============ */
+.timer-card{border:1px solid var(--rule); border-radius:var(--radius); background:var(--bg-raised); padding:20px; margin-bottom:8px;}
+.timer-modes{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+.timer-mode-btn{flex:1 1 100px; padding:9px 10px; border-radius:10px; border:1px solid var(--rule); background:var(--bg-card); color:var(--text-dim); font-size:12.5px; font-weight:600; min-height:40px;}
+.timer-mode-btn.active{color:var(--ink-950); background:var(--accent-strong); border-color:var(--accent-strong);}
+.timer-display-wrap{display:flex; flex-direction:column; align-items:center; gap:14px;}
+.timer-ring{position:relative; width:200px; height:200px; max-width:56vw; max-height:56vw;}
+.timer-ring svg{width:100%; height:100%; transform:rotate(-90deg);}
+.timer-ring circle{fill:none; stroke-width:8;}
+.timer-ring .track{stroke:var(--rule);}
+.timer-ring .fill{stroke:var(--teal); stroke-linecap:round; transition:stroke-dashoffset .3s linear;}
+.timer-time{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column;}
+.timer-time .clock{font-family:var(--mono); font-size:clamp(30px,7vw,40px); font-weight:600; letter-spacing:.01em;}
+.timer-time .phase-lbl{font-size:11.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; margin-top:4px;}
+.timer-btns{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; width:100%;}
+.timer-btn{flex:1 1 90px; padding:12px 14px; border-radius:12px; border:1px solid var(--rule); background:var(--bg-card); color:var(--text); font-size:13.5px; font-weight:600; min-height:46px;}
+.timer-btn.primary{background:var(--accent-strong); color:var(--ink-950); border-color:var(--accent-strong);}
+.timer-sessions{font-size:12.5px; color:var(--text-dim); font-family:var(--mono); text-align:center;}
+
+/* ============ DASHBOARD GRID ============ */
+.dash-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+.dash-card{border:1px solid var(--rule); border-radius:var(--radius); background:var(--bg-raised); padding:14px;}
+.dash-card .dash-num{font-family:var(--serif); font-size:24px; font-weight:600;}
+.dash-card .dash-lbl{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+.dash-card .bar-track{margin-top:10px; height:6px;}
+@media (min-width:560px){ .dash-grid{grid-template-columns:repeat(4,1fr);} }
+
+/* ============ FOOTER CONTROLS ============ */
+.controls{display:flex; gap:10px; flex-wrap:wrap; margin-top:36px;}
+.ctl-btn{flex:1 1 160px; padding:13px 16px; border-radius:12px; border:1px solid var(--rule); background:var(--bg-raised); color:var(--text); font-size:13.5px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px;}
+.ctl-btn.danger{color:var(--rose); border-color:rgba(193,97,79,.4);}
+.ctl-btn.primary{background:var(--accent-strong); color:var(--ink-950); border-color:var(--accent-strong);}
+
+/* ============ MODAL ============ */
+.modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;}
+.modal-overlay[hidden]{display:none;}
+.modal{background:var(--bg-raised); border:1px solid var(--rule); border-radius:var(--radius); padding:22px; max-width:340px; text-align:center;}
+.modal p{font-size:14px; color:var(--text-dim); margin:10px 0 18px; line-height:1.5;}
+.modal-actions{display:flex; gap:10px;}
+.modal-actions button{flex:1; padding:11px; border-radius:10px; border:1px solid var(--rule); background:var(--bg-card); color:var(--text); font-weight:600; font-size:13.5px;}
+.modal-actions button.confirm{background:var(--rose); border-color:var(--rose); color:#fff;}
+
+/* ============ TOAST ============ */
+.toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(20px); background:var(--bg-card); border:1px solid var(--rule); color:var(--text); padding:12px 18px; border-radius:30px; font-size:13.5px; opacity:0; pointer-events:none; transition:all .3s ease; z-index:200; display:flex; align-items:center; gap:8px;}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+/* ============ PRINT VIEW ============ */
+#printView{display:none;}
+@media print{
+  nav.weeknav, header .theme-btn, .controls, .strip, .streak-box, .motivate-strip, .timer-card, .dash-grid, #printBtn { display:none !important; }
+  body > .wrap > *:not(#printView){ display:none !important; }
+  #printView{ display:block !important; }
+  body{background:#fff; color:#111;}
+  .p-week{ break-inside:avoid-page; margin-bottom:18px; }
+  .p-day{ break-inside:avoid; margin:8px 0; }
+  .p-task{ font-size:12.5px; margin:2px 0; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow-row">
+      <div class="mark"><span class="dot"></span> STUDY TRACKER</div>
+      <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+    </div>
+    <h1 class="title">8-Week Study Master Plan</h1>
+    <p class="motto">"Small progress every day becomes a great achievement."</p>
+
+    <div class="stat-row">
+      <div class="stat"><div class="num" id="statPct">0%</div><div class="lbl">Overall progress</div></div>
+      <div class="stat"><div class="num" id="statDone">0</div><div class="lbl">Tasks completed</div></div>
+      <div class="stat"><div class="num" id="statTotal">0</div><div class="lbl">Total tasks</div></div>
+      <div class="stat"><div class="num" id="statWeek">1</div><div class="lbl">Current week</div></div>
+    </div>
+
+    <div class="bar-track"><div class="bar-fill" id="overallBar" style="width:0%"></div></div>
+    <div class="bar-caption"><span id="overallCaption">0 / 0 tasks</span><span id="overallPctCaption">0%</span></div>
+    <div class="motivate-strip" id="motivateStrip"></div>
+  </div>
+</header>
+
+<nav class="weeknav">
+  <div class="weeknav-inner" id="weekNavInner">
+    <div class="nav-arrows">
+      <button class="arrow-btn" id="prevBtn" title="Previous week">‹</button>
+      <button class="arrow-btn" id="nextBtn" title="Next week">›</button>
+    </div>
+    <button class="viewall-btn" id="viewAllBtn">View all weeks</button>
+    <!-- week pills injected here -->
+  </div>
+</nav>
+
+<div class="wrap">
+  <main id="mainContent"></main>
+
+  <h2 class="section-title">⏱️ Study Timer</h2>
+  <div class="timer-card">
+    <div class="timer-modes">
+      <button class="timer-mode-btn" data-mode="focus25">Pomodoro 25/5</button>
+      <button class="timer-mode-btn" data-mode="focus50">Deep Focus 50/10</button>
+      <button class="timer-mode-btn" data-mode="custom">Custom</button>
+    </div>
+    <div class="timer-display-wrap">
+      <div class="timer-ring">
+        <svg viewBox="0 0 200 200">
+          <circle class="track" cx="100" cy="100" r="90"></circle>
+          <circle class="fill" id="timerRingFill" cx="100" cy="100" r="90"></circle>
+        </svg>
+        <div class="timer-time">
+          <div class="clock" id="timerClock">25:00</div>
+          <div class="phase-lbl" id="timerPhaseLbl">Focus session</div>
+        </div>
+      </div>
+      <div class="timer-btns">
+        <button class="timer-btn primary" id="timerStartPause">Start</button>
+        <button class="timer-btn" id="timerReset">Reset</button>
+      </div>
+      <div class="timer-sessions">Focus sessions completed today: <span id="timerSessionsToday">0</span> · all-time: <span id="timerSessionsTotal">0</span></div>
+    </div>
+  </div>
+
+  <h2 class="section-title">📊 Progress Dashboard</h2>
+  <div class="dash-grid">
+    <div class="dash-card">
+      <div class="dash-num" id="dashTodayPct">0%</div>
+      <div class="dash-lbl" id="dashTodayLbl">Today's progress</div>
+      <div class="bar-track"><div class="bar-fill" id="dashTodayBar" style="width:0%"></div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-num" id="dashWeekPct">0%</div>
+      <div class="dash-lbl">This week's progress</div>
+      <div class="bar-track"><div class="bar-fill" id="dashWeekBar" style="width:0%"></div></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-num" id="dashTotalDone">0</div>
+      <div class="dash-lbl">Total tasks completed</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-num" id="dashSessions">0</div>
+      <div class="dash-lbl">Study sessions completed</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">🗓️ 8-Week Overview</h2>
+  <div class="summary-grid" id="summaryGrid"></div>
+
+  <h2 class="section-title">🔥 Streak</h2>
+  <div class="streak-box">
+    <div class="flame">🔥</div>
+    <div>
+      <div class="num"><span id="streakNum">0</span> day<span id="streakPlural">s</span></div>
+      <div class="lbl">Current study streak — keep the chain going.</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">🏆 Achievements</h2>
+  <div class="strip" id="achievementStrip"></div>
+
+  <div class="controls">
+    <button class="ctl-btn" id="printBtn">📸 Study Plan / Print View</button>
+    <button class="ctl-btn danger" id="resetBtn">↺ Reset Progress</button>
+  </div>
+</div>
+
+<div id="printView"></div>
+
+<div class="modal-overlay" id="modalOverlay" hidden>
+  <div class="modal">
+    <h3>Reset all progress?</h3>
+    <p>This will uncheck every task across all 8 weeks and clear your streak and achievements. This can't be undone.</p>
+    <div class="modal-actions">
+      <button id="modalCancel">Cancel</button>
+      <button class="confirm" id="modalConfirm">Reset everything</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   DATA — the user's exact schedule, kept separate from the
+   rendering logic so it can be edited easily later.
+   ========================================================= */
+
+// The fixed weekly rotation, repeated across all 8 weeks.
+// type: 'study' | 'practice' | 'exam' | 'review' | 'rest'
+const rotation = {
+  Monday:    [ {type:'study',subject:'Freshman Mathematics'}, {type:'study',subject:'General Physics'}, {type:'study',subject:'Geography'}, {type:'practice',label:'Practice + mistake review'} ],
+  Tuesday:   [ {type:'study',subject:'Logic & Critical Thinking'}, {type:'study',subject:'General Psychology'}, {type:'study',subject:'Freshman Mathematics'}, {type:'practice',label:'Practice + mistake review'} ],
+  Wednesday: [ {type:'study',subject:'General Physics'}, {type:'study',subject:'Geography'}, {type:'study',subject:'Logic & Critical Thinking'}, {type:'practice',label:'Practice + mistake review'} ],
+  Thursday:  [ {type:'study',subject:'Freshman Mathematics'}, {type:'study',subject:'General Psychology'}, {type:'study',subject:'General Physics'}, {type:'practice',label:'Practice + mistake review'} ],
+  Friday:    [ {type:'study',subject:'Geography'}, {type:'study',subject:'Logic & Critical Thinking'}, {type:'study',subject:'Freshman Mathematics'}, {type:'practice',label:'Practice + mistake review'} ],
+  Saturday:  [ {type:'study',subject:'General Physics'}, {type:'study',subject:'General Psychology'}, {type:'exam',label:'Weekly mixed practice exam'}, {type:'review',label:'Review mistakes'} ],
+  Sunday:    [ {type:'rest',label:'Rest + light revision — review formulas, definitions, maps, notes, and mistakes (1–2h max)'} ]
+};
+const dayOrder = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+// Phase guidance, in the user's own words, applied per week range.
+const phases = [
+  { weeks:[1,2], name:'Foundation', color:'teal',
+    note:'Focus mainly on understanding the material. For every 2-hour session: first 90 min learn the topic, next 30 min summarize it without looking at notes, then 20–30 practice questions. Don\u2019t worry about speed yet.',
+    practiceNote:'20–30 practice questions' },
+  { weeks:[3,4], name:'Build Strength', color:'teal',
+    note:'Continue learning new material, but increase questions: 2 hours learning \u2192 45–60 questions/practice problems. Keep a Mistake Notebook (Subject / Question-topic / My mistake / Correct idea) — it becomes extremely valuable near the exam.',
+    practiceNote:'45–60 questions/practice problems' },
+  { weeks:[5,6], name:'Heavy Practice', color:'gold',
+    note:'Reduce time spent learning new material. Pattern: 1.5–2h study/revision \u2192 1h practice \u2192 check answers \u2192 record mistakes. Start mixing questions from different chapters. Math & Physics: emphasize problem solving. Geography & Psychology: emphasize active recall. Logic: emphasize solving problems and identifying reasoning errors.',
+    practiceNote:'1h practice \u2192 check answers \u2192 record mistakes' },
+  { weeks:[7], name:'Exam Mode', color:'rose',
+    note:'Practice under time limits. Example pattern: Morning — 2h Mathematics revision, then timed Mathematics questions. Afternoon — 2h Physics revision, then timed Physics questions. Evening — Geography/Psychology/Logic revision. At least 2–3 days this week, do mixed questions from multiple subjects.',
+    practiceNote:'Timed practice questions' },
+  { weeks:[8], name:'Final Preparation', color:'rose',
+    note:'Don\u2019t try to learn everything again. Focus on: your Mistake Notebook, difficult formulas, important definitions, concepts you repeatedly forget, previous questions, timed practice, full/partial mock exams. The final days should be about recall + practice + correcting weaknesses — not staying up all night studying.',
+    practiceNote:'Mistake Notebook review, timed practice, mock exams' }
+];
+function phaseFor(week){ return phases.find(p => p.weeks.includes(week)); }
+
+// The golden rule cycle, shown once as a standing reminder.
+const goldenRule = 'LEARN \u2192 CLOSE THE BOOK \u2192 RECALL \u2192 PRACTICE \u2192 CHECK \u2192 CORRECT \u2192 REPEAT';
+
+// Build the full 8-week plan from the rotation + phase notes.
+const studyPlan = {};
+for(let w=1; w<=8; w++){
+  const ph = phaseFor(w);
+  const days = dayOrder.map(dayName=>{
+    const items = rotation[dayName].map((item, idx)=>{
+      const id = `w${w}-${dayName}-${idx}`;
+      let label = item.subject || item.label;
+      let tag = {study:'📖 Study', practice:'📝 Practice', exam:'📝 Exam', review:'🔄 Review', rest:'🟢 Rest'}[item.type];
+      let dur = item.type==='study' ? '2h' : (item.type==='rest' ? '1–2h' : '');
+      if(item.type==='practice'){ label = `${item.label} (${ph.practiceNote})`; }
+      return { id, type:item.type, tag, label, dur };
+    });
+    return { day:dayName, tasks:items };
+  });
+  studyPlan[w] = { week:w, phase:ph, days };
+}
+
+const motivational = [
+  'Keep going!', 'One day at a time.', 'You are building your future.',
+  'Consistency beats perfection.', 'Small steps, real progress.', 'Future you is watching — make them proud.'
+];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const STORAGE_KEY = 'studyPlanner8wk_v1';
+const THEME_KEY = 'studyPlanner8wk_theme';
+const TIMER_KEY = 'studyPlanner8wk_timer';
+// state.done: { taskId: true }. state.currentWeek/viewAllMode remember where the
+// user left off. state.sessionsTotal/sessionsByDate power the sessions dashboard.
+let state = { done:{}, currentWeek:1, viewAllMode:false, sessionsTotal:0, sessionsByDate:{} };
+let currentWeek = 1;
+let viewAllMode = false;
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      state = Object.assign({ done:{}, currentWeek:1, viewAllMode:false, sessionsTotal:0, sessionsByDate:{} }, saved);
+    }
+  }catch(e){ console.error('Could not read saved progress', e); }
+  currentWeek = state.currentWeek || 1;
+  viewAllMode = !!state.viewAllMode;
+}
+function saveState(){
+  state.currentWeek = currentWeek;
+  state.viewAllMode = viewAllMode;
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('Could not save progress', e); }
+}
+function isDone(id){ return !!state.done[id]; }
+function toggle(id){
+  state.done[id] = !state.done[id];
+  if(!state.done[id]) delete state.done[id];
+  saveState();
+  renderAll();
+}
+
+/* =========================================================
+   COMPUTED PROGRESS
+   ========================================================= */
+function allTaskIds(){
+  const ids = [];
+  for(let w=1; w<=8; w++) studyPlan[w].days.forEach(d=>d.tasks.forEach(t=>ids.push(t.id)));
+  return ids;
+}
+function weekPct(w){
+  const ids = [];
+  studyPlan[w].days.forEach(d=>d.tasks.forEach(t=>ids.push(t.id)));
+  const done = ids.filter(isDone).length;
+  return { done, total: ids.length, pct: Math.round((done/ids.length)*100) };
+}
+function dayPct(w, dayIndex){
+  const ids = studyPlan[w].days[dayIndex].tasks.map(t=>t.id);
+  const done = ids.filter(isDone).length;
+  return { done, total: ids.length, pct: ids.length ? Math.round((done/ids.length)*100) : 0 };
+}
+function overallProgress(){
+  const ids = allTaskIds();
+  const done = ids.filter(isDone).length;
+  return { done, total: ids.length, pct: ids.length ? Math.round((done/ids.length)*100) : 0 };
+}
+// Flat chronological list of {w, dayIndex} across all 8 weeks
+function flatDays(){
+  const list = [];
+  for(let w=1; w<=8; w++) studyPlan[w].days.forEach((d,i)=>list.push({w, i}));
+  return list;
+}
+function currentStreak(){
+  const days = flatDays();
+  // find the last day index that has any progress at all
+  let lastActive = -1;
+  days.forEach((d, idx)=>{ if(dayPct(d.w, d.i).done > 0) lastActive = idx; });
+  if(lastActive === -1) return 0;
+  let streak = 0;
+  for(let idx = lastActive; idx >= 0; idx--){
+    const p = dayPct(days[idx].w, days[idx].i);
+    if(p.total > 0 && p.done === p.total) streak++;
+    else break;
+  }
+  return streak;
+}
+
+/* =========================================================
+   ACHIEVEMENTS
+   ========================================================= */
+function computeAchievements(){
+  const overall = overallProgress();
+  const streak = currentStreak();
+  const anyWeekFull = [1,2,3,4,5,6,7,8].some(w=>weekPct(w).pct===100);
+  return [
+    { ico:'🏆', name:'First Task Completed', desc:'Check off your very first task', unlocked: overall.done >= 1 },
+    { ico:'🔥', name:'7-Day Study Streak', desc:'Complete 7 consecutive full days', unlocked: streak >= 7 },
+    { ico:'📚', name:'50 Tasks Completed', desc:'Reach 50 completed tasks', unlocked: overall.done >= 50 },
+    { ico:'🎯', name:'Week Completed', desc:'Finish every task in one week', unlocked: anyWeekFull },
+    { ico:'💯', name:'100% Week', desc:'Hit 100% completion on a week', unlocked: anyWeekFull }
+  ];
+}
+
+/* =========================================================
+   RENDERING
+   ========================================================= */
+function taskRow(t){
+  const done = isDone(t.id);
+  return `
+    <div class="task ${done?'done':''}">
+      <button class="chk ${done?'checked':''}" data-id="${t.id}" aria-label="Toggle task">${done?'✓':''}</button>
+      <div class="body">
+        <div class="tag">${t.tag}</div>
+        <div class="label">${t.label}</div>
+      </div>
+      ${t.dur ? `<div class="dur">${t.dur}</div>` : ''}
+    </div>`;
+}
+
+function dayCard(w, dayIndex){
+  const d = studyPlan[w].days[dayIndex];
+  const p = dayPct(w, dayIndex);
+  return `
+    <div class="day-card">
+      <div class="day-header ${p.pct===100?'done':''}">
+        <h3>${d.day}</h3>
+        <span class="day-pct">${p.done}/${p.total} · ${p.pct}%</span>
+      </div>
+      <div class="tasklist">
+        ${d.tasks.map(taskRow).join('')}
+      </div>
+    </div>`;
+}
+
+function weekBlock(w){
+  const wk = studyPlan[w];
+  const p = weekPct(w);
+  return `
+    <div class="week-block" id="week-${w}">
+      <div class="week-head">
+        <h2>Week ${w}</h2>
+        <span class="wk-pct">${p.done}/${p.total} · ${p.pct}%</span>
+      </div>
+      <div class="phase-banner">
+        <b>${wk.phase.name}${wk.phase.weeks.length>1 ? ` — Weeks ${wk.phase.weeks[0]}–${wk.phase.weeks[1]}`:` — Week ${wk.phase.weeks[0]}`}.</b><br>
+        ${wk.phase.note}
+      </div>
+      ${wk.days.map((d,i)=>dayCard(w,i)).join('')}
+    </div>`;
+}
+
+function renderMain(){
+  const main = document.getElementById('mainContent');
+  if(viewAllMode){
+    main.innerHTML = [1,2,3,4,5,6,7,8].map(weekBlock).join('');
+  }else{
+    main.innerHTML = weekBlock(currentWeek);
+  }
+}
+
+function renderNav(){
+  const inner = document.getElementById('weekNavInner');
+  const arrows = inner.querySelector('.nav-arrows');
+  const viewAll = document.getElementById('viewAllBtn');
+  // remove old pills
+  inner.querySelectorAll('.wk-pill').forEach(el=>el.remove());
+  for(let w=1; w<=8; w++){
+    const p = weekPct(w);
+    const btn = document.createElement('button');
+    btn.className = 'wk-pill' + (!viewAllMode && currentWeek===w ? ' active' : '');
+    btn.innerHTML = `Week ${w}<span class="pct">${p.pct}%</span>`;
+    btn.addEventListener('click', ()=>{ viewAllMode=false; currentWeek=w; saveState(); renderAll(); document.getElementById('mainContent').scrollIntoView({behavior:'smooth'}); });
+    inner.appendChild(btn);
+  }
+  viewAll.classList.toggle('active', viewAllMode);
+  document.getElementById('prevBtn').disabled = viewAllMode || currentWeek<=1;
+  document.getElementById('nextBtn').disabled = viewAllMode || currentWeek>=8;
+}
+
+function renderHeaderStats(){
+  const o = overallProgress();
+  document.getElementById('statPct').textContent = o.pct + '%';
+  document.getElementById('statDone').textContent = o.done;
+  document.getElementById('statTotal').textContent = o.total;
+  document.getElementById('statWeek').textContent = currentWeek;
+  document.getElementById('overallBar').style.width = o.pct + '%';
+  document.getElementById('overallCaption').textContent = `${o.done} / ${o.total} tasks`;
+  document.getElementById('overallPctCaption').textContent = o.pct + '%';
+}
+
+function renderSummary(){
+  const grid = document.getElementById('summaryGrid');
+  grid.innerHTML = [1,2,3,4,5,6,7,8].map(w=>{
+    const p = weekPct(w);
+    const filled = Math.round(p.pct/10);
+    const bar = '█'.repeat(filled) + '░'.repeat(10-filled);
+    return `<div class="summary-row">
+      <span class="wk-name">WEEK ${w}</span>
+      <span style="font-family:var(--mono); color:var(--accent); letter-spacing:1px;">${bar}</span>
+      <span class="pct">${p.pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderStreak(){
+  const s = currentStreak();
+  document.getElementById('streakNum').textContent = s;
+  document.getElementById('streakPlural').textContent = s===1 ? '' : 's';
+}
+
+function renderAchievements(){
+  const strip = document.getElementById('achievementStrip');
+  strip.innerHTML = computeAchievements().map(a=>`
+    <div class="badge ${a.unlocked?'unlocked':''}">
+      <div class="ico">${a.ico}</div>
+      <div class="name">${a.name}</div>
+      <div class="desc">${a.desc}</div>
+    </div>`).join('');
+}
+
+function renderAll(){
+  renderHeaderStats();
+  renderNav();
+  renderMain();
+  renderSummary();
+  renderStreak();
+  renderAchievements();
+  renderDashboard();
+}
+
+/* =========================================================
+   DASHBOARD — today's progress is matched against the real
+   weekday, using whichever week the user is currently viewing.
+   ========================================================= */
+function todayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+function renderDashboard(){
+  const todayName = dayOrder[(new Date().getDay() + 6) % 7]; // JS Sunday=0 -> align to Monday-first dayOrder
+  const dayIdx = studyPlan[currentWeek].days.findIndex(d=>d.day===todayName);
+  const tp = dayIdx>=0 ? dayPct(currentWeek, dayIdx) : { done:0, total:0, pct:0 };
+  document.getElementById('dashTodayPct').textContent = tp.pct + '%';
+  document.getElementById('dashTodayLbl').textContent = `Today (${todayName}) · ${tp.done}/${tp.total}`;
+  document.getElementById('dashTodayBar').style.width = tp.pct + '%';
+
+  const wp = weekPct(currentWeek);
+  document.getElementById('dashWeekPct').textContent = wp.pct + '%';
+  document.getElementById('dashWeekBar').style.width = wp.pct + '%';
+
+  document.getElementById('dashTotalDone').textContent = overallProgress().done;
+
+  const sessionsToday = (state.sessionsByDate && state.sessionsByDate[todayKey()]) || 0;
+  document.getElementById('dashSessions').textContent = state.sessionsTotal || 0;
+  document.getElementById('timerSessionsToday').textContent = sessionsToday;
+  document.getElementById('timerSessionsTotal').textContent = state.sessionsTotal || 0;
+}
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+document.addEventListener('click', (e)=>{
+  const chk = e.target.closest('.chk');
+  if(chk){ toggle(chk.dataset.id); }
+});
+
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  if(currentWeek>1){ currentWeek--; saveState(); renderAll(); }
+});
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  if(currentWeek<8){ currentWeek++; saveState(); renderAll(); }
+});
+document.getElementById('viewAllBtn').addEventListener('click', ()=>{
+  viewAllMode = !viewAllMode; saveState(); renderAll();
+});
+
+// Theme toggle
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t==='dark' ? '🌙 Dark' : '☀️ Light';
+  try{ localStorage.setItem(THEME_KEY, t); }catch(e){}
+}
+document.getElementById('themeBtn').addEventListener('click', ()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur==='dark' ? 'light' : 'dark');
+});
+
+// Reset flow
+const modal = document.getElementById('modalOverlay');
+document.getElementById('resetBtn').addEventListener('click', ()=>{ modal.hidden = false; });
+document.getElementById('modalCancel').addEventListener('click', ()=>{ modal.hidden = true; });
+document.getElementById('modalConfirm').addEventListener('click', ()=>{
+  state = { done:{}, currentWeek:1, viewAllMode:false, sessionsTotal:0, sessionsByDate:{} };
+  currentWeek = 1; viewAllMode = false;
+  saveState();
+  modal.hidden = true;
+  renderAll();
+  renderDashboard();
+  showToast('Progress reset.');
+});
+
+// Toast
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// Motivational strip — progressive, based on overall progress
+function rotateMotivation(){
+  const el = document.getElementById('motivateStrip');
+  const o = overallProgress();
+  const idx = o.total ? Math.min(motivational.length-1, Math.floor((o.pct/100)*motivational.length)) : 0;
+  el.textContent = '“' + motivational[idx] + '”';
+}
+const _renderAllOrig = renderAll;
+renderAll = function(){ _renderAllOrig(); rotateMotivation(); };
+
+/* =========================================================
+   PRINT VIEW
+   ========================================================= */
+function buildPrintView(){
+  const el = document.getElementById('printView');
+  const o = overallProgress();
+  let html = `<h1 style="font-family:Georgia,serif;">8-Week Study Master Plan</h1>
+    <p>Overall: ${o.done}/${o.total} tasks (${o.pct}%)</p><hr>`;
+  for(let w=1; w<=8; w++){
+    const wk = studyPlan[w];
+    const p = weekPct(w);
+    html += `<div class="p-week"><h2 style="font-family:Georgia,serif;">Week ${w} — ${wk.phase.name} (${p.pct}%)</h2>`;
+    wk.days.forEach((d,i)=>{
+      html += `<div class="p-day"><b>${d.day}</b>`;
+      d.tasks.forEach(t=>{
+        const mark = isDone(t.id) ? '☑' : '☐';
+        html += `<div class="p-task">${mark} ${t.tag} — ${t.label}${t.dur?` (${t.dur})`:''}</div>`;
+      });
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+  el.innerHTML = html;
+}
+document.getElementById('printBtn').addEventListener('click', ()=>{
+  buildPrintView();
+  setTimeout(()=>window.print(), 50);
+});
+
+/* =========================================================
+   STUDY TIMER — Pomodoro-style, fully offline.
+   Uses a stored end-timestamp (not a running interval) so the
+   countdown stays accurate even if the tab was closed/backgrounded.
+   ========================================================= */
+const TIMER_PRESETS = {
+  focus25: { focus:25, break:5,  label:'Pomodoro 25/5' },
+  focus50: { focus:50, break:10, label:'Deep Focus 50/10' },
+  custom:  { focus:25, break:5,  label:'Custom' }
+};
+let timer = {
+  mode:'focus25', phase:'focus', running:false,
+  remainingMs: TIMER_PRESETS.focus25.focus*60000,
+  endTimestamp:null
+};
+let timerInterval = null;
+const RING_CIRC = 2*Math.PI*90;
+
+function loadTimer(){
+  try{
+    const raw = localStorage.getItem(TIMER_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      timer = Object.assign(timer, saved);
+      // if it was running when we closed the tab, fast-forward using the stored endTimestamp
+      if(timer.running && timer.endTimestamp){
+        const remaining = timer.endTimestamp - Date.now();
+        if(remaining <= 0){ timer.running = false; advancePhase(true); }
+      }
+    }
+  }catch(e){ console.error('Could not read timer state', e); }
+}
+function saveTimer(){
+  try{ localStorage.setItem(TIMER_KEY, JSON.stringify(timer)); }
+  catch(e){ console.error('Could not save timer state', e); }
+}
+function phaseDurationMs(){
+  const preset = TIMER_PRESETS[timer.mode];
+  return (timer.phase==='focus' ? preset.focus : preset.break) * 60000;
+}
+function formatClock(ms){
+  const total = Math.max(0, Math.round(ms/1000));
+  const m = Math.floor(total/60), s = total%60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function renderTimer(){
+  const remaining = timer.running ? Math.max(0, timer.endTimestamp - Date.now()) : timer.remainingMs;
+  document.getElementById('timerClock').textContent = formatClock(remaining);
+  document.getElementById('timerPhaseLbl').textContent = timer.phase==='focus' ? 'Focus session' : 'Break';
+  const total = phaseDurationMs();
+  const frac = total>0 ? remaining/total : 0;
+  const ring = document.getElementById('timerRingFill');
+  ring.style.strokeDasharray = RING_CIRC;
+  ring.style.strokeDashoffset = RING_CIRC * (1-frac);
+  ring.style.stroke = timer.phase==='focus' ? 'var(--teal)' : 'var(--accent-strong)';
+  document.getElementById('timerStartPause').textContent = timer.running ? 'Pause' : (remaining < total ? 'Resume' : 'Start');
+  document.querySelectorAll('.timer-mode-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mode===timer.mode);
+  });
+}
+function advancePhase(silent){
+  // Completed a phase: count a session on focus completion, then flip to the other phase.
+  if(timer.phase==='focus'){
+    state.sessionsTotal = (state.sessionsTotal||0) + 1;
+    state.sessionsByDate = state.sessionsByDate || {};
+    const k = todayKey();
+    state.sessionsByDate[k] = (state.sessionsByDate[k]||0) + 1;
+    saveState();
+    renderDashboard();
+    if(!silent) showToast('Focus session complete — take a break! ☕');
+    timer.phase = 'break';
+  }else{
+    if(!silent) showToast('Break over — ready for another session? 📖');
+    timer.phase = 'focus';
+  }
+  timer.remainingMs = phaseDurationMs();
+  timer.running = false;
+  timer.endTimestamp = null;
+  saveTimer();
+  renderTimer();
+}
+function timerTick(){
+  if(!timer.running) return;
+  const remaining = timer.endTimestamp - Date.now();
+  if(remaining <= 0){ advancePhase(false); return; }
+  renderTimer();
+}
+function startTimerInterval(){
+  if(timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(timerTick, 1000);
+}
+function setTimerMode(mode){
+  if(timer.running) return; // avoid switching mid-session
+  timer.mode = mode;
+  timer.phase = 'focus';
+  timer.remainingMs = phaseDurationMs();
+  saveTimer();
+  renderTimer();
+}
+document.querySelectorAll('.timer-mode-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.mode==='custom' && !timer.running){
+      const f = parseInt(prompt('Focus minutes?', TIMER_PRESETS.custom.focus), 10);
+      const b = parseInt(prompt('Break minutes?', TIMER_PRESETS.custom.break), 10);
+      if(f>0) TIMER_PRESETS.custom.focus = f;
+      if(b>0) TIMER_PRESETS.custom.break = b;
+    }
+    setTimerMode(btn.dataset.mode);
+  });
+});
+document.getElementById('timerStartPause').addEventListener('click', ()=>{
+  if(timer.running){
+    // pause
+    timer.remainingMs = Math.max(0, timer.endTimestamp - Date.now());
+    timer.running = false;
+    timer.endTimestamp = null;
+  }else{
+    // start / resume
+    timer.endTimestamp = Date.now() + timer.remainingMs;
+    timer.running = true;
+    startTimerInterval();
+  }
+  saveTimer();
+  renderTimer();
+});
+document.getElementById('timerReset').addEventListener('click', ()=>{
+  timer.running = false;
+  timer.phase = 'focus';
+  timer.endTimestamp = null;
+  timer.remainingMs = phaseDurationMs();
+  saveTimer();
+  renderTimer();
+});
+
+/* =========================================================
+   INIT
+   ========================================================= */
+loadState();
+try{
+  const savedTheme = localStorage.getItem(THEME_KEY);
+  applyTheme(savedTheme || 'dark');
+}catch(e){ applyTheme('dark'); }
+renderAll();
+
+loadTimer();
+renderTimer();
+if(timer.running) startTimerInterval();
+
+// Register the service worker so the whole app keeps working offline
+// after the first successful load.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(err=>{
+      console.error('Service worker registration failed', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
